@@ -1,0 +1,38 @@
+{
+    "layout1": {
+        "type": "layout",
+        "pages": ["main-page"],
+        "main-page": {
+            "type": "page",
+            "sections": ["favorites-section"]
+        },
+        "favorites-section": {
+            "type": "section",
+            "title": "Favoris Spotify (bouton étoile)",
+            "keys": ["favorites-help", "client-id", "connect-button", "disconnect-button"]
+        }
+    },
+    "favorites-help": {
+        "type": "label",
+        "description": "Pour activer le bouton favoris : créez une app gratuite sur developer.spotify.com/dashboard, ajoutez l'URI de redirection http://127.0.0.1:43127/callback dans ses paramètres, puis collez son Client ID ci-dessous."
+    },
+    "client-id": {
+        "type": "entry",
+        "default": "",
+        "description": "Client ID de l'application Spotify"
+    },
+    "connect-button": {
+        "type": "button",
+        "description": "Se connecter à Spotify",
+        "callback": "onConnectClicked"
+    },
+    "disconnect-button": {
+        "type": "button",
+        "description": "Se déconnecter",
+        "callback": "onDisconnectClicked"
+    },
+    "refresh-token": {
+        "type": "generic",
+        "default": ""
+    }
+}
