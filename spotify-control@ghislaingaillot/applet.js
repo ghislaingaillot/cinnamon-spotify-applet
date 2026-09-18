@@ -492,6 +492,10 @@ class SpotifyControlApplet extends Applet.Applet {
         this._onNameVanished();
         this._favorites.cancelAuth();
 
+        // Invalidate any in-flight cover art download/decode so its
+        // callback becomes a no-op if it resolves after removal.
+        this._coverLoadToken++;
+
         if (this._coverTmpFile) {
             try {
                 this._coverTmpFile.delete(null);
