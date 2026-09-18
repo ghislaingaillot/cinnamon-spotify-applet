@@ -144,6 +144,8 @@ class SpotifyControlApplet extends Applet.Applet {
 
         this.settings = new Settings.AppletSettings(this, metadata.uuid, instance_id);
         this.settings.bindProperty(Settings.BindingDirection.BIDIRECTIONAL,
+            "enable-favorites", "favoritesEnabled", () => this._updateStarVisibility(), null);
+        this.settings.bindProperty(Settings.BindingDirection.BIDIRECTIONAL,
             "client-id", "spotifyClientId", null, null);
         this.settings.bindProperty(Settings.BindingDirection.BIDIRECTIONAL,
             "refresh-token", "spotifyRefreshToken", null, null);
@@ -179,7 +181,7 @@ class SpotifyControlApplet extends Applet.Applet {
         this._applet_tooltip.destroy();
         this._applet_tooltip = new TrackTooltip(this, "", orientation);
 
-        this._applet_context_menu.addAction(_("Ouvrir Spotify"), () => this._launchSpotify());
+        this._applet_context_menu.addAction(_("Open Spotify"), () => this._launchSpotify());
 
         this._setAvailable(false);
 
@@ -299,7 +301,7 @@ class SpotifyControlApplet extends Applet.Applet {
         this._setLikedState(false);
 
         let isTrack = this._isSpotifyTrackUri(trackUri);
-        this._starButton.visible = this._available && isTrack;
+        this._updateStarVisibility();
 
         if (isTrack && this._favorites.isConnected()) {
             let trackId = this._trackIdFromUri(trackUri);
@@ -309,6 +311,11 @@ class SpotifyControlApplet extends Applet.Applet {
                 this._setLikedState(liked);
             });
         }
+    }
+
+    _updateStarVisibility() {
+        this._starButton.visible = this._available && this.favoritesEnabled &&
+            this._isSpotifyTrackUri(this._currentTrackUri);
     }
 
     _isSpotifyTrackUri(uri) {
@@ -321,7 +328,7 @@ class SpotifyControlApplet extends Applet.Applet {
 
     _updateTooltip() {
         if (!this._available) {
-            this._applet_tooltip.setTrackInfo(_("Spotify (cliquer pour lancer)"), "");
+            this._applet_tooltip.setTrackInfo(_("Spotify (click to launch)"), "");
             return;
         }
 
@@ -380,15 +387,15 @@ class SpotifyControlApplet extends Applet.Applet {
     }
 
     _onFavoriteClicked() {
-        if (!this._available || !this._isSpotifyTrackUri(this._currentTrackUri))
+        if (!this._available || !this.favoritesEnabled || !this._isSpotifyTrackUri(this._currentTrackUri))
             return;
 
         if (!this._favorites.isConfigured()) {
-            Main.notify(_("Spotify"), _("Renseignez d'abord un Client ID (clic droit → Configurer)."));
+            Main.notify(_("Spotify"), _("Set a Client ID first (right-click → Configure)."));
             return;
         }
         if (!this._favorites.isConnected()) {
-            Main.notify(_("Spotify"), _("Connectez votre compte (clic droit → Configurer)."));
+            Main.notify(_("Spotify"), _("Connect your account first (right-click → Configure)."));
             return;
         }
 
@@ -404,23 +411,23 @@ class SpotifyControlApplet extends Applet.Applet {
             if (ok) {
                 this._setLikedState(newLiked);
                 Main.notify(_("Spotify"), newLiked ?
-                    _("Ajouté aux titres likés") : _("Retiré des titres likés"));
+                    _("Added to Liked Songs") : _("Removed from Liked Songs"));
             } else {
-                Main.notify(_("Spotify"), _("Échec de la mise à jour des favoris."));
+                Main.notify(_("Spotify"), _("Could not update favorites."));
             }
         });
     }
 
     onConnectClicked() {
         if (!this._favorites.isConfigured()) {
-            Main.notify(_("Spotify"), _("Renseignez d'abord un Client ID."));
+            Main.notify(_("Spotify"), _("Set a Client ID first."));
             return;
         }
 
-        Main.notify(_("Spotify"), _("Ouverture du navigateur pour autoriser l'application..."));
+        Main.notify(_("Spotify"), _("Opening your browser to authorize the application…"));
         this._favorites.startAuth((ok, err) => {
             if (ok) {
-                Main.notify(_("Spotify"), _("Compte Spotify connecté."));
+                Main.notify(_("Spotify"), _("Account connected."));
                 if (this._isSpotifyTrackUri(this._currentTrackUri)) {
                     let trackUri = this._currentTrackUri;
                     this._favorites.checkLiked(this._trackIdFromUri(trackUri), (liked) => {
@@ -429,7 +436,7 @@ class SpotifyControlApplet extends Applet.Applet {
                     });
                 }
             } else {
-                Main.notify(_("Spotify"), _("Échec de la connexion : ") + err);
+                Main.notify(_("Spotify"), _("Connection failed: %s").format(err));
             }
         });
     }
@@ -437,7 +444,7 @@ class SpotifyControlApplet extends Applet.Applet {
     onDisconnectClicked() {
         this._favorites.disconnect();
         this._setLikedState(false);
-        Main.notify(_("Spotify"), _("Compte Spotify déconnecté."));
+        Main.notify(_("Spotify"), _("Account disconnected."));
     }
 
     _setAvailable(available) {
@@ -446,10 +453,9 @@ class SpotifyControlApplet extends Applet.Applet {
         this._prevButton._icon.opacity = opacity;
         this._playPauseButton._icon.opacity = opacity;
         this._nextButton._icon.opacity = opacity;
-        if (!available) {
+        if (!available)
             this._playPauseButton._icon.icon_name = 'xsi-media-playback-start';
-            this._starButton.visible = false;
-        }
+        this._updateStarVisibility();
         this._updateTooltip();
     }
 
@@ -484,6 +490,7 @@ class SpotifyControlApplet extends Applet.Applet {
             this._watcherId = 0;
         }
         this._onNameVanished();
+        this._favorites.cancelAuth();
 
         if (this._coverTmpFile) {
             try {

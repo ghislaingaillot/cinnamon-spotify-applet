@@ -4,32 +4,42 @@
         "pages": ["main-page"],
         "main-page": {
             "type": "page",
+            "title": "Favorites",
             "sections": ["favorites-section"]
         },
         "favorites-section": {
             "type": "section",
-            "title": "Favoris Spotify (bouton étoile)",
-            "keys": ["favorites-help", "client-id", "connect-button", "disconnect-button"]
+            "title": "Spotify favorites (star button)",
+            "keys": ["enable-favorites", "favorites-help", "client-id", "connect-button", "disconnect-button"]
         }
+    },
+    "enable-favorites": {
+        "type": "checkbox",
+        "default": true,
+        "description": "Show the favorites (star) button"
     },
     "favorites-help": {
         "type": "label",
-        "description": "Pour activer le bouton favoris : créez une app gratuite sur developer.spotify.com/dashboard, ajoutez l'URI de redirection http://127.0.0.1:43127/callback dans ses paramètres, puis collez son Client ID ci-dessous."
+        "description": "To enable the favorites button: create a free app at developer.spotify.com/dashboard, add the redirect URI http://127.0.0.1:43127/callback in its settings, then paste its Client ID below.",
+        "dependency": "enable-favorites=true"
     },
     "client-id": {
         "type": "entry",
         "default": "",
-        "description": "Client ID de l'application Spotify"
+        "description": "Spotify application Client ID",
+        "dependency": "enable-favorites=true"
     },
     "connect-button": {
         "type": "button",
-        "description": "Se connecter à Spotify",
-        "callback": "onConnectClicked"
+        "description": "Connect to Spotify",
+        "callback": "onConnectClicked",
+        "dependency": "enable-favorites=true"
     },
     "disconnect-button": {
         "type": "button",
-        "description": "Se déconnecter",
-        "callback": "onDisconnectClicked"
+        "description": "Disconnect",
+        "callback": "onDisconnectClicked",
+        "dependency": "enable-favorites=true"
     },
     "refresh-token": {
         "type": "generic",

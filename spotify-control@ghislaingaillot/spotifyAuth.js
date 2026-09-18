@@ -13,7 +13,7 @@ const VERIFIER_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01
 
 const CALLBACK_PAGE =
     "<html><body style=\"font-family: sans-serif; text-align:center; margin-top: 15%;\">" +
-    "<h2>Spotify connecte</h2><p>Vous pouvez fermer cette page.</p></body></html>";
+    "<h2>Spotify connected</h2><p>You can close this page now.</p></body></html>";
 
 /*
  * Handles the OAuth2 Authorization Code + PKCE flow against Spotify's
@@ -66,27 +66,40 @@ class SpotifyFavorites {
         }
 
         let verifier = this._randomVerifier(64);
-        let challenge;
-        try {
-            challenge = this._pkceChallenge(verifier);
-        } catch (e) {
-            cb(false, "pkce-failed");
-            return;
-        }
-
-        this._listenForCallback((code, err) => {
-            if (!code) {
-                cb(false, err || "cancelled");
+        this._pkceChallenge(verifier, (challenge) => {
+            if (!challenge) {
+                cb(false, "pkce-failed");
                 return;
             }
-            this._exchangeCode(code, verifier, cb);
-        });
 
-        let url = `${AUTH_URL}?client_id=${encodeURIComponent(this.clientId)}` +
-            `&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-            `&code_challenge_method=S256&code_challenge=${challenge}` +
-            `&scope=${encodeURIComponent(AUTH_SCOPES)}`;
-        Util.spawn(['xdg-open', url]);
+            this._listenForCallback((code, err) => {
+                if (!code) {
+                    cb(false, err || "cancelled");
+                    return;
+                }
+                this._exchangeCode(code, verifier, cb);
+            });
+
+            let url = `${AUTH_URL}?client_id=${encodeURIComponent(this.clientId)}` +
+                `&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+                `&code_challenge_method=S256&code_challenge=${challenge}` +
+                `&scope=${encodeURIComponent(AUTH_SCOPES)}`;
+            Util.spawn(['xdg-open', url]);
+        });
+    }
+
+    // Aborts a pending login flow (e.g. the applet is being removed from
+    // the panel) and releases the local listening socket.
+    cancelAuth() {
+        if (this._authTimeoutId) {
+            GLib.source_remove(this._authTimeoutId);
+            this._authTimeoutId = 0;
+        }
+        if (this._authService) {
+            this._authService.stop();
+            this._authService.close();
+            this._authService = null;
+        }
     }
 
     disconnect() {
@@ -176,6 +189,10 @@ class SpotifyFavorites {
         }
 
         let finish = (code, err) => {
+            if (!this._authService) {
+                // cancelAuth() already tore this down; don't call back twice.
+                return;
+            }
             if (this._authTimeoutId) {
                 GLib.source_remove(this._authTimeoutId);
                 this._authTimeoutId = 0;
@@ -314,11 +331,25 @@ class SpotifyFavorites {
         return out;
     }
 
-    _pkceChallenge(verifier) {
-        let proc = Gio.Subprocess.new(['openssl', 'dgst', '-sha256', '-binary'],
-            Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE);
-        let [, stdout] = proc.communicate(new GLib.Bytes(ByteArray.fromString(verifier)), null);
-        let b64 = GLib.base64_encode(stdout.get_data());
-        return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    // PKCE code_challenge = base64url(sha256(verifier)), computed by
+    // shelling out to openssl asynchronously (no blocking I/O on the
+    // main loop). cb(challenge) with challenge = null on failure.
+    _pkceChallenge(verifier, cb) {
+        try {
+            let proc = Gio.Subprocess.new(['openssl', 'dgst', '-sha256', '-binary'],
+                Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE);
+            let stdinBytes = new GLib.Bytes(ByteArray.fromString(verifier));
+            proc.communicate_async(stdinBytes, null, (p, res) => {
+                try {
+                    let [, stdout] = p.communicate_finish(res);
+                    let b64 = GLib.base64_encode(stdout.get_data());
+                    cb(b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+                } catch (e) {
+                    cb(null);
+                }
+            });
+        } catch (e) {
+            cb(null);
+        }
     }
 }
