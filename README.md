@@ -36,11 +36,14 @@ The favorites button needs a one-time OAuth authorization with Spotify (free, a 
    ```
    http://127.0.0.1:43127/callback
    ```
-3. Copy the application's **Client ID**.
-4. In Cinnamon, right-click the applet → **Configure**, paste the Client ID.
-5. Click **Connect to Spotify**: your browser opens to authorize the application, then closes automatically.
+3. Still in the application's settings, open **User Management** and add your own Spotify account (the email tied to it). New apps start in "Development Mode", which only allows explicitly-added accounts to use the API — without this step every request returns `403 Forbidden`, even for the app's owner.
+4. Copy the application's **Client ID**.
+5. In Cinnamon, right-click the applet → **Configure**, paste the Client ID.
+6. Click **Connect to Spotify**: your browser opens to authorize the application, then closes automatically.
 
 The access token is refreshed automatically afterwards; you can disconnect at any time from the same settings panel, or hide the favorites button entirely with the "Show the favorites (star) button" toggle.
+
+> If clicking the star shows "Could not update favorites.", it's almost always step 3 above (account missing from User Management) — add it there and try again, no need to reconnect.
 
 Without this setup, the applet works normally for playback (previous/pause/next/cover art); only the favorites button stays inactive.
 
