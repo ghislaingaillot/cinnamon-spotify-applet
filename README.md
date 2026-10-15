@@ -43,7 +43,7 @@ The favorites button needs a one-time OAuth authorization with Spotify (free, a 
 
 The access token is refreshed automatically afterwards; you can disconnect at any time from the same settings panel, or hide the favorites button entirely with the "Show the favorites (star) button" toggle.
 
-> If clicking the star shows "Could not update favorites.", it's almost always step 3 above (account missing from User Management) — add it there and try again, no need to reconnect.
+> If clicking the star shows "Could not update favorites (403)", double-check your account is listed under User Management for the app (step 3 above).
 
 Without this setup, the applet works normally for playback (previous/pause/next/cover art); only the favorites button stays inactive.
 
